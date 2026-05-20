@@ -8,12 +8,15 @@ import MaterialsPage from "./pages/materials/page.tsx";
 import CategoriesPage from "./pages/categories/page.tsx";
 import SuppliersPage from "./pages/suppliers/page.tsx";
 import ExpiredItemsPage from "./pages/expired-items/page.tsx";
-import LocationsPage from "./pages/locations/page.tsx";
-import UsersPage from "./pages/users/page.tsx";
-import ShelfItemsPage from "./pages/shelf-items/page.tsx";
-import LoginPage from "./pages/login/page.tsx";
-import NotFound from "./pages/NotFound.tsx";
+import LocationsPage from "./pages/locations/page";
+import UsersPage from "./pages/users/page";
+import ShelfItemsPage from "./pages/shelf-items/page";
+import CustomersPage from "./pages/customers/page";
+import DeliveriesPage from "./pages/deliveries/page";
+import LoginPage from "./pages/login/page";
+import NotFound from "./pages/NotFound";
 import { useAuth } from "@/hooks/use-auth.ts";
+
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth();
@@ -45,6 +48,8 @@ export default function App() {
             <Route path="/materials" element={<MaterialsPage />} />
             <Route path="/categories" element={<CategoriesPage />} />
             <Route path="/suppliers" element={<SuppliersPage />} />
+            <Route path="/customers" element={<CustomersPage />} />
+            <Route path="/deliveries" element={<DeliveriesPage />} />
             <Route path="/expired-items" element={<ExpiredItemsPage />} />
             <Route path="/locations" element={<LocationsPage />} />
             <Route path="/shelf-items" element={<ShelfItemsPage />} />

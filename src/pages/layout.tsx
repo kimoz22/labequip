@@ -31,6 +31,8 @@ const navItems = [
   { to: "/expired-items", label: "Expired Items", icon: ShieldAlert },
   { to: "/locations", label: "Locations", icon: MapPin },
   { to: "/shelf-items", label: "Shelf Items", icon: Layers3 },
+  { to: "/customers", label: "Customers", icon: Users },
+  { to: "/deliveries", label: "Deliveries", icon: Truck },
 ];
 
 const adminNavItems = [{ to: "/users", label: "Users", icon: Users }];

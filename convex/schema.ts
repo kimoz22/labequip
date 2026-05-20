@@ -36,7 +36,8 @@ export default defineSchema({
     unit: v.optional(v.string()),
   }).index("by_prodCode", ["prodCode"]),
 
-  stocks: defineTable({
+
+   stocks: defineTable({
     itemCode: v.string(),
     description: v.string(),
     materialId: v.optional(v.id("materials")),
@@ -45,6 +46,7 @@ export default defineSchema({
     openBal: v.number(),
     receiptQty: v.number(),
     transferQty: v.number(),
+    dmgQty: v.optional(v.number()),
     closeBal: v.number(),
     location: v.optional(v.string()),
     remarks: v.optional(v.string()),
@@ -82,4 +84,59 @@ export default defineSchema({
     transferredBy: v.optional(v.string()),
     transferredByUserId: v.optional(v.id("users")),
   }).index("by_stockId", ["stockId"]),
+
+
+  customers: defineTable({
+    name: v.string(),
+    contactPerson: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    email: v.optional(v.string()),
+    address: v.optional(v.string()),
+    remarks: v.optional(v.string()),
+  }).index("by_name", ["name"]),
+
+
+  deliveries: defineTable({
+    deliveryNo: v.string(),
+    itemCode: v.string(),
+    description: v.string(),
+    qty: v.number(),
+    unit: v.optional(v.string()),
+    location: v.optional(v.string()),
+    customer: v.string(),
+    date: v.string(),
+    preparedBy: v.string(),
+    remarks: v.optional(v.string()),
+  })
+    .index("by_deliveryNo", ["deliveryNo"])
+    .index("by_date", ["date"]),
+
+
+  stockHistory: defineTable({
+    itemCode: v.string(),
+    description: v.string(),
+    category: v.optional(v.string()),
+    qty: v.number(),
+    location: v.optional(v.string()),
+    remarks: v.optional(v.string()),
+    dateRecorded: v.string(),
+    recordedBy: v.string(),
+  })
+    .index("by_itemCode", ["itemCode"])
+    .index("by_dateRecorded", ["dateRecorded"]),
+
+
+    damageStock: defineTable({
+    itemCode: v.string(),
+    description: v.string(),
+    category: v.optional(v.string()),
+    qty: v.number(),
+    from: v.optional(v.string()),
+    dateCreated: v.string(),
+    recordedBy: v.string(),
+  })
+    .index("by_itemCode", ["itemCode"])
+    .index("by_dateCreated", ["dateCreated"]),
+
 });
+

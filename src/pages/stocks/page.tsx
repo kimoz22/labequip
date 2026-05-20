@@ -3,7 +3,6 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import type { Id } from "@/convex/_generated/dataModel.d.ts";
 import { Button } from "@/components/ui/button.tsx";
-import { useAuth } from "@/hooks/use-auth.ts";
 import { Input } from "@/components/ui/input.tsx";
 import { Card } from "@/components/ui/card.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
@@ -24,15 +23,18 @@ import {
   SelectValue,
 } from "@/components/ui/select.tsx";
 import { toast } from "sonner";
-import { Plus, Search, Pencil, Trash2, ArrowLeftRight, Eye } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, ArrowLeftRight, Eye, PackagePlus, ShieldAlert } from "lucide-react";
+import { useQuery as useConvexQuery } from "convex/react";
 import { cn } from "@/lib/utils.ts";
 import TransferDialog from "./_components/TransferDialog.tsx";
 import StockFormDialog from "./_components/StockFormDialog.tsx";
 import StockDetailDialog from "./_components/StockDetailDialog.tsx";
+import NewStockDialog from "./_components/NewStockDialog.tsx";
+import DamageStockDialog from "./_components/DamageStockDialog.tsx";
 
 export default function StocksPage() {
   const stocks = useQuery(api.stocks.list, {});
-  const { user } = useAuth();
+  const currentUser = useConvexQuery(api.users.getCurrentUser, {});
   const removeStock = useMutation(api.stocks.remove);
 
   const [search, setSearch] = useState("");
@@ -40,10 +42,12 @@ export default function StocksPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [editId, setEditId] = useState<Id<"stocks"> | null>(null);
   const [transferOpen, setTransferOpen] = useState(false);
+  const [newStockOpen, setNewStockOpen] = useState(false);
+  const [damageStockOpen, setDamageStockOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<Id<"stocks"> | null>(null);
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = currentUser?.role === "admin";
 
   const filtered = stocks?.filter((s) => {
     const q = search.toLowerCase();
@@ -96,6 +100,24 @@ export default function StocksPage() {
         >
           <ArrowLeftRight className="w-4 h-4 mr-1" /> Transfer
         </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={!selectedId}
+          onClick={() => setNewStockOpen(true)}
+          className="cursor-pointer"
+        >
+          <PackagePlus className="w-4 h-4 mr-1" /> New Stock
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={!selectedId}
+          onClick={() => setDamageStockOpen(true)}
+          className="cursor-pointer"
+        >
+          <ShieldAlert className="w-4 h-4 mr-1" /> Damage Stock
+        </Button>
       </div>
 
       <Card className="overflow-hidden">
@@ -107,8 +129,9 @@ export default function StocksPage() {
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground">Description</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Category</th>
                 <th className="text-right px-4 py-3 font-medium text-muted-foreground">Open Bal</th>
-                <th className="text-right px-4 py-3 font-medium text-muted-foreground">Receipt</th>
+                <th className="text-right px-4 py-3 font-medium text-muted-foreground">NewStck</th>
                 <th className="text-right px-4 py-3 font-medium text-muted-foreground">Transfer</th>
+                <th className="text-right px-4 py-3 font-medium text-muted-foreground">DmgStck</th>
                 <th className="text-right px-4 py-3 font-medium text-muted-foreground">Close Bal</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Unit</th>
                 <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden xl:table-cell">Recorded By</th>
@@ -151,6 +174,7 @@ export default function StocksPage() {
                     <td className="px-4 py-3 text-right">{stock.openBal}</td>
                     <td className="px-4 py-3 text-right text-chart-3">{stock.receiptQty}</td>
                     <td className="px-4 py-3 text-right text-destructive">{stock.transferQty}</td>
+                    <td className="px-4 py-3 text-right text-orange-500">{stock.dmgQty ?? 0}</td>
                     <td className="px-4 py-3 text-right font-semibold">
                       <Badge variant={stock.closeBal <= 5 ? "destructive" : "secondary"}>
                         {stock.closeBal}
@@ -223,6 +247,22 @@ export default function StocksPage() {
         <TransferDialog
           open={transferOpen}
           onOpenChange={setTransferOpen}
+          stock={selectedStock}
+        />
+      )}
+
+      {selectedStock && (
+        <NewStockDialog
+          open={newStockOpen}
+          onOpenChange={setNewStockOpen}
+          stock={selectedStock}
+        />
+      )}
+
+      {selectedStock && (
+        <DamageStockDialog
+          open={damageStockOpen}
+          onOpenChange={setDamageStockOpen}
           stock={selectedStock}
         />
       )}

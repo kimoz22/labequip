@@ -10,6 +10,8 @@
 
 import type * as auth_actions from "../auth_actions.js";
 import type * as categories from "../categories.js";
+import type * as customers from "../customers.js";
+import type * as deliveries from "../deliveries.js";
 import type * as locations from "../locations.js";
 import type * as materials from "../materials.js";
 import type * as shelfItems from "../shelfItems.js";
@@ -26,6 +28,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth_actions: typeof auth_actions;
   categories: typeof categories;
+  customers: typeof customers;
+  deliveries: typeof deliveries;
   locations: typeof locations;
   materials: typeof materials;
   shelfItems: typeof shelfItems;
