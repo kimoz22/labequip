@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select.tsx";
 import { toast } from "sonner";
 import { Plus, Search, Pencil, Trash2, ArrowLeftRight, Eye, PackagePlus, ShieldAlert } from "lucide-react";
-import { useQuery as useConvexQuery } from "convex/react";
+import { useAuth } from "@/hooks/use-auth.ts";
 import { cn } from "@/lib/utils.ts";
 import TransferDialog from "./_components/TransferDialog.tsx";
 import StockFormDialog from "./_components/StockFormDialog.tsx";
@@ -34,7 +34,7 @@ import DamageStockDialog from "./_components/DamageStockDialog.tsx";
 
 export default function StocksPage() {
   const stocks = useQuery(api.stocks.list, {});
-  const currentUser = useConvexQuery(api.users.getCurrentUser, {});
+  const { user } = useAuth();
   const removeStock = useMutation(api.stocks.remove);
 
   const [search, setSearch] = useState("");
@@ -47,7 +47,7 @@ export default function StocksPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<Id<"stocks"> | null>(null);
 
-  const isAdmin = currentUser?.role === "admin";
+  const isAdmin = user?.role === "admin";
 
   const filtered = stocks?.filter((s) => {
     const q = search.toLowerCase();

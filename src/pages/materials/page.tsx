@@ -126,6 +126,7 @@ export default function MaterialsPage() {
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [formOpen, setFormOpen] = useState(false);
+  const [displayLimit, setDisplayLimit] = useState(50);
   const [editId, setEditId] = useState<Id<"materials"> | null>(null);
   const [form, setForm] = useState(EMPTY);
   const [loading, setLoading] = useState(false);
@@ -145,6 +146,9 @@ export default function MaterialsPage() {
     const matchesCat = filterCategory === "all" || m.categoryId === filterCategory;
     return matchesSearch && matchesCat;
   }) ?? [];
+
+  const displayed = filtered.slice(0, displayLimit);
+  const hasMore = filtered.length > displayLimit;
 
   const openCreate = () => {
     setEditId(null);
@@ -342,11 +346,11 @@ export default function MaterialsPage() {
           <Input
             placeholder="Search by code or description..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setDisplayLimit(50); }}
             className="pl-9"
           />
         </div>
-        <Select value={filterCategory} onValueChange={setFilterCategory}>
+        <Select value={filterCategory} onValueChange={(v) => { setFilterCategory(v); setDisplayLimit(50); }}>
           <SelectTrigger className="w-44">
             <SelectValue placeholder="All categories" />
           </SelectTrigger>
@@ -387,7 +391,7 @@ export default function MaterialsPage() {
                   </td>
                 </tr>
               ) : (
-                filtered.map((m) => (
+                displayed.map((m) => (
                   <tr key={m._id} className="border-b hover:bg-muted/30">
                     <td className="px-4 py-3 font-medium text-primary">{m.prodCode}</td>
                     <td className="px-4 py-3">{m.description}</td>
@@ -410,6 +414,26 @@ export default function MaterialsPage() {
           </table>
         </div>
       </Card>
+
+      {/* Count + Load More */}
+      {materials !== undefined && filtered.length > 0 && (
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>
+            Showing <span className="font-medium text-foreground">{displayed.length}</span> of{" "}
+            <span className="font-medium text-foreground">{filtered.length}</span> materials
+          </span>
+          {hasMore && (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="cursor-pointer"
+              onClick={() => setDisplayLimit((l) => l + 50)}
+            >
+              Load 50 more
+            </Button>
+          )}
+        </div>
+      )}
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-w-md">

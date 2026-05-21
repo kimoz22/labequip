@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api.js";
 import type { Id } from "@/convex/_generated/dataModel.d.ts";
@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
+import { Badge } from "@/components/ui/badge.tsx";
 import {
   Select,
   SelectContent,
@@ -20,8 +21,9 @@ import {
   SelectValue,
 } from "@/components/ui/select.tsx";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Trash2, Search, X } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth.ts";
+import { cn } from "@/lib/utils.ts";
 
 // Tanzania time zone (UTC+3)
 const TANZANIA_TZ = "Africa/Dar_es_Salaam";
@@ -41,6 +43,114 @@ function getTanzaniaDateTime(): string {
 
 type LocationEntry = { location: string; qty: number };
 
+type MaterialWithCategory = {
+  _id: Id<"materials">;
+  prodCode: string;
+  description: string;
+  unit?: string;
+  categoryId?: Id<"categories">;
+  categoryName?: string | null;
+};
+
+type DescriptionSearchProps = {
+  value: string;
+  onChange: (value: string) => void;
+  onSelect: (material: MaterialWithCategory) => void;
+  materials: MaterialWithCategory[] | undefined;
+};
+
+function DescriptionSearch({ value, onChange, onSelect, materials }: DescriptionSearchProps) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState(value);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Sync external value to query when it changes (e.g. reset)
+  useEffect(() => {
+    setQuery(value);
+  }, [value]);
+
+  const filtered = query.trim().length > 0
+    ? (materials ?? []).filter((m) =>
+        m.description.toLowerCase().includes(query.toLowerCase()) ||
+        m.prodCode.toLowerCase().includes(query.toLowerCase())
+      ).slice(0, 10)
+    : [];
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleSelect = (mat: MaterialWithCategory) => {
+    setQuery(mat.description);
+    onChange(mat.description);
+    onSelect(mat);
+    setOpen(false);
+  };
+
+  const handleClear = () => {
+    setQuery("");
+    onChange("");
+    setOpen(false);
+  };
+
+  return (
+    <div ref={containerRef} className="relative">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+        <Input
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            onChange(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => query.trim().length > 0 && setOpen(true)}
+          placeholder="Search description from Materials..."
+          className="pl-9 pr-8"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+      {open && filtered.length > 0 && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg overflow-hidden">
+          <ul className="max-h-52 overflow-y-auto">
+            {filtered.map((mat) => (
+              <li
+                key={mat._id}
+                onMouseDown={() => handleSelect(mat)}
+                className="flex items-start gap-3 px-3 py-2.5 hover:bg-accent cursor-pointer border-b last:border-b-0"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">{mat.description}</div>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <span className="text-xs text-muted-foreground font-mono">{mat.prodCode}</span>
+                    {mat.unit && <Badge variant="secondary" className="text-xs py-0 h-4">{mat.unit}</Badge>}
+                    {mat.categoryName && <Badge variant="outline" className="text-xs py-0 h-4">{mat.categoryName}</Badge>}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -54,6 +164,7 @@ const EMPTY_FORM = {
   openBal: "0",
   receiptQty: "0",
   transferQty: "0",
+  dmgQty: "0",
   location: "",
   remarks: "",
   categoryId: "",
@@ -76,6 +187,7 @@ export default function StockFormDialog({ open, onOpenChange, editId }: Props) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
   const [locationEntries, setLocationEntries] = useState<LocationEntry[]>([]);
+  const [selectedMaterial, setSelectedMaterial] = useState<MaterialWithCategory | null>(null);
 
   // Location qty dialog state
   const [locationQtyDialog, setLocationQtyDialog] = useState<{
@@ -93,6 +205,7 @@ export default function StockFormDialog({ open, onOpenChange, editId }: Props) {
         openBal: String(stockData.openBal),
         receiptQty: String(stockData.receiptQty),
         transferQty: String(stockData.transferQty),
+        dmgQty: String(stockData.dmgQty ?? 0),
         location: stockData.location ?? "",
         remarks: stockData.remarks ?? "",
         categoryId: stockData.categoryId ?? "",
@@ -104,10 +217,11 @@ export default function StockFormDialog({ open, onOpenChange, editId }: Props) {
     } else if (!editId) {
       setForm(EMPTY_FORM);
       setLocationEntries([]);
+      setSelectedMaterial(null);
     }
   }, [editId, stockData, open]);
 
-  // Auto-fill from materials
+  // Auto-fill from materials when item code typed manually
   const handleItemCodeBlur = () => {
     const match = materials?.find((m) => m.prodCode === form.itemCode);
     if (match) {
@@ -117,7 +231,20 @@ export default function StockFormDialog({ open, onOpenChange, editId }: Props) {
         unit: match.unit ?? f.unit,
         categoryId: match.categoryId ?? f.categoryId,
       }));
+      setSelectedMaterial(match);
     }
+  };
+
+  // Called when a material is selected from the description search dropdown
+  const handleMaterialSelect = (mat: MaterialWithCategory) => {
+    setSelectedMaterial(mat);
+    setForm((f) => ({
+      ...f,
+      description: mat.description,
+      itemCode: mat.prodCode,
+      unit: mat.unit ?? f.unit,
+      categoryId: (mat.categoryId as string) ?? f.categoryId,
+    }));
   };
 
   const set = (key: keyof typeof EMPTY_FORM) => (value: string) =>
@@ -171,6 +298,7 @@ export default function StockFormDialog({ open, onOpenChange, editId }: Props) {
         openBal: parseFloat(form.openBal) || 0,
         receiptQty: parseFloat(form.receiptQty) || 0,
         transferQty: parseFloat(form.transferQty) || 0,
+        dmgQty: parseFloat(form.dmgQty) || 0,
         location: form.location || undefined,
         remarks: form.remarks || undefined,
         categoryId: (form.categoryId as Id<"categories">) || undefined,
@@ -182,7 +310,7 @@ export default function StockFormDialog({ open, onOpenChange, editId }: Props) {
         await updateStock({ id: editId, ...payload });
         toast.success("Stock updated");
       } else {
-        const recordedBy = user?.name ?? user?.email ?? "Unknown";
+        const recordedBy = user?.profile.name ?? user?.profile.email ?? "Unknown";
         const dateRecorded = getTanzaniaDateTime();
 
         await createStock({
@@ -243,7 +371,33 @@ export default function StockFormDialog({ open, onOpenChange, editId }: Props) {
             </div>
             <div className="col-span-2 space-y-1">
               <Label>Description *</Label>
-              <Input value={form.description} onChange={(e) => set("description")(e.target.value)} placeholder="Material description" />
+              <DescriptionSearch
+                value={form.description}
+                onChange={(v) => {
+                  set("description")(v);
+                  if (!v) setSelectedMaterial(null);
+                }}
+                onSelect={handleMaterialSelect}
+                materials={materials}
+              />
+              {selectedMaterial && (
+                <div className={cn(
+                  "mt-2 rounded-md border bg-muted/40 px-3 py-2 flex flex-wrap gap-x-4 gap-y-1 text-sm"
+                )}>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-muted-foreground text-xs">Item Code:</span>
+                    <span className="font-mono font-medium text-xs">{selectedMaterial.prodCode}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-muted-foreground text-xs">Unit:</span>
+                    <span className="font-medium text-xs">{selectedMaterial.unit ?? "—"}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-muted-foreground text-xs">Category:</span>
+                    <span className="font-medium text-xs">{selectedMaterial.categoryName ?? "—"}</span>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="space-y-1">
               <Label>Category</Label>
@@ -351,10 +505,14 @@ export default function StockFormDialog({ open, onOpenChange, editId }: Props) {
               <Input type="number" value={form.transferQty} onChange={(e) => set("transferQty")(e.target.value)} min="0" />
             </div>
             <div className="space-y-1">
+              <Label>DmgStck Qty</Label>
+              <Input type="number" value={form.dmgQty} onChange={(e) => set("dmgQty")(e.target.value)} min="0" />
+            </div>
+            <div className="space-y-1">
               <Label>Close Balance (computed)</Label>
               <Input
                 disabled
-                value={(parseFloat(form.openBal) || 0) + (parseFloat(form.receiptQty) || 0) - (parseFloat(form.transferQty) || 0)}
+                value={(parseFloat(form.openBal) || 0) + (parseFloat(form.receiptQty) || 0) - (parseFloat(form.transferQty) || 0) - (parseFloat(form.dmgQty) || 0)}
                 className="bg-muted text-muted-foreground"
               />
             </div>
