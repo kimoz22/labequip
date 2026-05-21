@@ -70,6 +70,7 @@ export const remove = mutation({
   },
 });
 
+// ── Create delivery + update stock + shelf in one mutation ────────────────────
 export const createWithStockUpdate = mutation({
   args: {
     deliveryNo: v.string(),
@@ -89,9 +90,9 @@ export const createWithStockUpdate = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
 
     for (const item of args.items) {
+      // 1. Insert delivery record
       await ctx.db.insert("deliveries", {
         deliveryNo: args.deliveryNo,
         itemCode: item.itemCode,
@@ -105,12 +106,14 @@ export const createWithStockUpdate = mutation({
         remarks: args.remarks,
       });
 
+      // 2. Find the stock row by itemCode
       const stock = await ctx.db
         .query("stocks")
         .withIndex("by_itemCode", (q) => q.eq("itemCode", item.itemCode))
         .first();
 
       if (stock) {
+        // 3. Update transferQty and recalculate closeBal: closeBal = existing closeBal - delivered qty
         const newTransferQty = stock.transferQty + item.qty;
         const newCloseBal = stock.closeBal - item.qty;
 
@@ -119,6 +122,7 @@ export const createWithStockUpdate = mutation({
           closeBal: newCloseBal,
         });
 
+        // 4. Record in transfers table
         await ctx.db.insert("transfers", {
           stockId: stock._id,
           itemCode: stock.itemCode,
@@ -128,10 +132,11 @@ export const createWithStockUpdate = mutation({
           fromLocation: item.location,
           toLocation: undefined,
           remarks: `Delivery ${args.deliveryNo} to ${args.customer}`,
-          transferredBy: identity.name ?? identity.email ?? "Unknown",
+          transferredBy: identity?.name ?? identity?.email ?? "Unknown",
         });
       }
 
+      // 5. Deduct qty from shelfItems at the selected location
       const shelfItems = await ctx.db
         .query("shelfItems")
         .withIndex("by_prodCode", (q) => q.eq("prodCode", item.itemCode))
@@ -146,6 +151,7 @@ export const createWithStockUpdate = mutation({
   },
 });
 
+// Fetch all delivery rows for a given deliveryNo (for PDF export)
 export const getByDeliveryNo = query({
   args: { deliveryNo: v.string() },
   handler: async (ctx, args) => {
@@ -156,6 +162,7 @@ export const getByDeliveryNo = query({
   },
 });
 
+// Search shelf items by description or prodCode, grouped by prodCode
 export const searchShelfItems = query({
   args: { search: v.string() },
   handler: async (ctx, args) => {
@@ -164,25 +171,34 @@ export const searchShelfItems = query({
     const all = await ctx.db.query("shelfItems").order("desc").collect();
     const q = args.search.toLowerCase();
 
-    const grouped = new Map();
+    const matched = all.filter(
+      (i) =>
+        i.description.toLowerCase().includes(q) ||
+        i.prodCode.toLowerCase().includes(q)
+    );
 
-    for (const item of all) {
-      if (
-        item.description.toLowerCase().includes(q) ||
-        item.prodCode.toLowerCase().includes(q)
-      ) {
-        const existing = grouped.get(item.prodCode);
-        const loc = { location: item.location ?? "Unknown", qty: item.qty };
-        if (existing) {
-          existing.locations.push(loc);
-        } else {
-          grouped.set(item.prodCode, {
-            prodCode: item.prodCode,
-            description: item.description,
-            unit: item.unit,
-            locations: [loc],
-          });
-        }
+    const grouped = new Map<
+      string,
+      {
+        prodCode: string;
+        description: string;
+        unit: string | undefined;
+        locations: { location: string; qty: number }[];
+      }
+    >();
+
+    for (const item of matched) {
+      const existing = grouped.get(item.prodCode);
+      const loc = { location: item.location ?? "Unknown", qty: item.qty };
+      if (existing) {
+        existing.locations.push(loc);
+      } else {
+        grouped.set(item.prodCode, {
+          prodCode: item.prodCode,
+          description: item.description,
+          unit: item.unit,
+          locations: [loc],
+        });
       }
     }
 
@@ -190,6 +206,7 @@ export const searchShelfItems = query({
   },
 });
 
+// Get all shelf locations + qty for a specific prodCode
 export const getShelfLocations = query({
   args: { prodCode: v.string() },
   handler: async (ctx, args) => {

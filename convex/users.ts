@@ -231,23 +231,18 @@ export const removeAll = mutation({
       throw new Error("Confirmation text does not match. Please type 'DELETE_ALL_USERS' to confirm.");
     }
 
-    // Verify admin status
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Authentication required.");
+    if (!args.adminEmail.trim()) {
+      throw new Error("Admin email is required.");
     }
 
+    const normalizedAdminEmail = args.adminEmail.trim().toLowerCase();
     const adminUser = await ctx.db
       .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", normalizedAdminEmail))
       .unique();
 
     if (!adminUser || adminUser.role !== "admin") {
       throw new Error("Admin privileges required.");
-    }
-
-    if (adminUser.email !== args.adminEmail) {
-      throw new Error("Admin email verification failed.");
     }
 
     // Get all users

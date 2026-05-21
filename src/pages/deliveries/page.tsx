@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Card } from "@/components/ui/card.tsx";
 import { Skeleton } from "@/components/ui/skeleton.tsx";
+import { useAuth } from "@/hooks/use-auth.ts";
 import {
   Dialog,
   DialogContent,
@@ -137,6 +138,82 @@ function DescriptionSearch({
                       {item.unit && (
                         <span className="text-xs text-muted-foreground">· {item.unit}</span>
                       )}
+                    </div>
+                  </div>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CustomerSearch({
+  value,
+  onChange,
+  customers,
+  onSelect,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  customers: Array<{ _id: Id<"customers">; name: string; contactPerson?: string; phone?: string; email?: string }> | undefined;
+  onSelect: (name: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const normalized = value.trim().toLowerCase();
+  const filtered = normalized
+    ? customers?.filter((customer) => customer.name.toLowerCase().includes(normalized)) ?? []
+    : customers?.slice(0, 10) ?? [];
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <Input
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        placeholder="Search customer name..."
+      />
+      {open && customers !== undefined && (
+        <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-popover border border-border rounded-md shadow-lg max-h-64 overflow-y-auto">
+          {filtered.length === 0 ? (
+            <div className="p-3 text-sm text-muted-foreground text-center">
+              {normalized ? "No customers match your search." : "No customers available."}
+            </div>
+          ) : (
+            filtered.map((customer) => (
+              <button
+                key={customer._id}
+                type="button"
+                className="w-full text-left px-3 py-2.5 hover:bg-accent hover:text-accent-foreground transition-colors border-b last:border-0 cursor-pointer"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onSelect(customer.name);
+                  setOpen(false);
+                }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium truncate">{customer.name}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {customer.contactPerson ? `${customer.contactPerson} · ` : ""}
+                      {customer.phone ?? customer.email ?? "No contact info"}
                     </div>
                   </div>
                 </div>
@@ -374,9 +451,11 @@ function exportDeliveryPDF(deliveryNo: string, rows: DeliveryRow[]) {
 export function DeliveriesPage() {
   const deliveries = useQuery(api.deliveries.list, {});
   const nextDeliveryNo = useQuery(api.deliveries.getNextDeliveryNo, {});
+  const customers = useQuery(api.customers.list, {});
   const createDelivery = useMutation(api.deliveries.createWithStockUpdate);
   const updateDelivery = useMutation(api.deliveries.update);
   const removeDelivery = useMutation(api.deliveries.remove);
+  const { user } = useAuth();
 
   const [search, setSearch] = useState("");
   const [formOpen, setFormOpen] = useState(false);
@@ -413,7 +492,11 @@ export function DeliveriesPage() {
 
   const openCreate = () => {
     setEditId(null);
-    setHeader({ ...HEADER_EMPTY, deliveryNo: nextDeliveryNo ?? "" });
+    setHeader({
+      ...HEADER_EMPTY,
+      deliveryNo: nextDeliveryNo ?? "",
+      preparedBy: user?.name ?? user?.email ?? "",
+    });
     setItemDraft(ITEM_EMPTY);
     setItems([]);
     setFormOpen(true);
@@ -727,10 +810,11 @@ export function DeliveriesPage() {
               </div>
               <div className="space-y-1">
                 <Label>Customer *</Label>
-                <Input
+                <CustomerSearch
                   value={header.customer}
-                  onChange={(e) => setHdr("customer")(e.target.value)}
-                  placeholder="Customer name"
+                  onChange={setHdr("customer")}
+                  customers={customers}
+                  onSelect={(name) => setHdr("customer")(name)}
                 />
               </div>
               <div className="space-y-1">
@@ -739,6 +823,7 @@ export function DeliveriesPage() {
                   value={header.preparedBy}
                   onChange={(e) => setHdr("preparedBy")(e.target.value)}
                   placeholder="e.g. John Smith"
+                  readOnly={!editId}
                 />
               </div>
             </div>

@@ -42,8 +42,6 @@ export const create = mutation({
     dateRecorded: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
     const closeBal = args.openBal + args.receiptQty - args.transferQty - (args.dmgQty ?? 0);
     return await ctx.db.insert("stocks", { ...args, closeBal });
   },
@@ -70,8 +68,6 @@ export const update = mutation({
     dateRecorded: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
     const { id, ...fields } = args;
     const existing = await ctx.db.get(id);
     if (!existing) throw new ConvexError({ message: "Stock not found", code: "NOT_FOUND" });
@@ -87,8 +83,6 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("stocks") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
     await ctx.db.delete(args.id);
   },
 });
@@ -104,7 +98,6 @@ export const transfer = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
     const stock = await ctx.db.get(args.stockId);
     if (!stock) throw new ConvexError({ message: "Stock not found", code: "NOT_FOUND" });
 
@@ -134,7 +127,7 @@ export const transfer = mutation({
       fromLocation: args.fromLocation,
       toLocation: args.toLocation,
       remarks: args.remarks,
-      transferredBy: identity.name,
+      transferredBy: identity?.name ?? "Unknown",
     });
 
     return newCloseBal;
@@ -186,7 +179,6 @@ export const addToOpenBal = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
 
     const stock = await ctx.db.get(args.stockId);
     if (!stock) throw new ConvexError({ message: "Stock not found", code: "NOT_FOUND" });
@@ -229,7 +221,7 @@ export const addToOpenBal = mutation({
           categoryId: stock.categoryId,
           location: args.toLocation,
           qty: args.qty,
-          recorded: identity.name ?? undefined,
+          recorded: identity?.name ?? undefined,
           dateRecorded: now,
         });
       }
@@ -244,7 +236,7 @@ export const addToOpenBal = mutation({
     // quantity: args.qty,
     // toLocation: args.toLocation,
     // remarks: args.remarks,
-    // transferredBy: identity.name,
+    // transferredBy: identity?.name,
     //});
 
     return newCloseBal;
@@ -263,14 +255,15 @@ export const addStockHistory = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .unique();
+    const user = identity
+      ? await ctx.db
+          .query("users")
+          .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+          .unique()
+      : null;
 
-    const recordedBy = user?.name ?? identity.name ?? identity.email ?? "Unknown";
+    const recordedBy = user?.name ?? identity?.name ?? identity?.email ?? "Unknown";
 
     return await ctx.db.insert("stockHistory", {
       ...args,
@@ -304,13 +297,14 @@ export const addDamageStock = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
-      .unique();
-    const recordedBy = user?.name ?? identity.name ?? identity.email ?? "Unknown";
+    const user = identity
+      ? await ctx.db
+          .query("users")
+          .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.tokenIdentifier))
+          .unique()
+      : null;
+    const recordedBy = user?.name ?? identity?.name ?? identity?.email ?? "Unknown";
 
     // Find and update the stock's dmgQty
     const stock = await ctx.db

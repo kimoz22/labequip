@@ -12,8 +12,6 @@ export const list = query({
 export const create = mutation({
   args: { name: v.string() },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
     return await ctx.db.insert("categories", { name: args.name });
   },
 });
@@ -21,8 +19,6 @@ export const create = mutation({
 export const update = mutation({
   args: { id: v.id("categories"), name: v.string() },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
     await ctx.db.patch(args.id, { name: args.name });
   },
 });
@@ -30,8 +26,6 @@ export const update = mutation({
 export const remove = mutation({
   args: { id: v.id("categories") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new ConvexError({ message: "Not authenticated", code: "UNAUTHENTICATED" });
     await ctx.db.delete(args.id);
   },
 });

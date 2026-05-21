@@ -74,11 +74,9 @@ export default function StocksPage() {
           <h1 className="text-2xl font-bold tracking-tight">Stocks</h1>
           <p className="text-muted-foreground text-sm">Manage laboratory inventory</p>
         </div>
-        {isAdmin && (
-          <Button size="sm" onClick={() => { setEditId(null); setFormOpen(true); }} className="cursor-pointer">
-            <Plus className="w-4 h-4 mr-1" /> Add Stock
-          </Button>
-        )}
+        <Button size="sm" onClick={() => { setEditId(null); setFormOpen(true); }} className="cursor-pointer">
+          <Plus className="w-4 h-4 mr-1" /> Add Stock
+        </Button>
       </div>
 
       <div className="flex items-center gap-2">
