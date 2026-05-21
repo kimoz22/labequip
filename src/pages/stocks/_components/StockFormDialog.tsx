@@ -310,7 +310,7 @@ export default function StockFormDialog({ open, onOpenChange, editId }: Props) {
         await updateStock({ id: editId, ...payload });
         toast.success("Stock updated");
       } else {
-        const recordedBy = user?.profile.name ?? user?.profile.email ?? "Unknown";
+        const recordedBy = user?.name ?? user?.email ?? "Unknown";
         const dateRecorded = getTanzaniaDateTime();
 
         await createStock({
