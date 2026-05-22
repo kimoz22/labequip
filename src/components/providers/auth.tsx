@@ -136,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (current && current.sessionId) {
       try {
         await convexClient.mutation(api.users.removeSession, {
-          userId: current.id,
+          userId: current.id as any,
           sessionId: current.sessionId,
         });
       } catch {

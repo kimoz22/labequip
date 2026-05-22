@@ -44,7 +44,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    signout();
+    await signout();
     navigate("/login", { replace: true });
   };
 
