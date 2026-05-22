@@ -42,13 +42,13 @@ export default function LoginPage() {
         <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-3xl bg-primary text-primary-foreground">
           <FlaskConical className="w-8 h-8" />
         </div>
-        <h1 className="text-3xl font-semibold">Welcome to LabStock</h1>
+        <h1 className="text-3xl font-semibold">Welcome to Lab Equip</h1>
         <p className="mt-2 text-sm text-muted-foreground">Sign in to your account.</p>
 
         <div className="mt-8 space-y-4">
           <form className="space-y-4 text-left" onSubmit={handleLogin}>
             <div className="space-y-2">
-              <Label htmlFor="login-email">Email</Label>
+              <Label htmlFor="login-email">User Name</Label>
               <Input
                 id="login-email"
                 type="email"

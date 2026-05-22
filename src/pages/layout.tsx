@@ -7,6 +7,7 @@ import {
   ArrowLeftRight,
   Layers,
   Tag,
+  Activity,
   Users,
   FlaskConical,
   LogOut,
@@ -24,6 +25,7 @@ import { useAuth } from "@/hooks/use-auth.ts";
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/stocks", label: "Stocks", icon: Package },
+  { to: "/stock-history", label: "Stock History", icon: Activity },
   { to: "/transfers", label: "Transfers", icon: ArrowLeftRight },
   { to: "/materials", label: "Materials", icon: Layers },
   { to: "/categories", label: "Categories", icon: Tag },
@@ -56,7 +58,7 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           <FlaskConical className="w-5 h-5 text-sidebar-primary-foreground" />
         </div>
         <div>
-          <div className="font-bold text-sidebar-foreground text-sm tracking-wide">LabStock</div>
+          <div className="font-bold text-sidebar-foreground text-sm tracking-wide">Lab Equip</div>
           <div className="text-xs text-sidebar-foreground/50">Inventory System</div>
         </div>
         {onClose && (

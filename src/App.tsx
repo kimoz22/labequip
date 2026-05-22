@@ -7,6 +7,7 @@ import TransfersPage from "./pages/transfers/page.tsx";
 import MaterialsPage from "./pages/materials/page.tsx";
 import CategoriesPage from "./pages/categories/page.tsx";
 import SuppliersPage from "./pages/suppliers/page.tsx";
+import StockHistoryPage from "./pages/stock-history/page.tsx";
 import ExpiredItemsPage from "./pages/expired-items/page.tsx";
 import LocationsPage from "./pages/locations/page";
 import UsersPage from "./pages/users/page";
@@ -53,6 +54,7 @@ export default function App() {
             <Route path="/expired-items" element={<ExpiredItemsPage />} />
             <Route path="/locations" element={<LocationsPage />} />
             <Route path="/shelf-items" element={<ShelfItemsPage />} />
+            <Route path="/stock-history" element={<StockHistoryPage />} />
             <Route path="/users" element={<UsersPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />

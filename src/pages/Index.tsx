@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.t
 import { Skeleton } from "@/components/ui/skeleton.tsx";
 import { Package, ArrowLeftRight, Layers, Tag, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
+import StockHistorySummary from "@/components/stock-history/StockHistorySummary.tsx";
 
 export default function Index() {
   const stocks = useQuery(api.stocks.list, {});
@@ -128,6 +129,16 @@ export default function Index() {
               ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Recent Stock History */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Recent Stock History</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <StockHistorySummary />
         </CardContent>
       </Card>
     </div>
