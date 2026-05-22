@@ -17,6 +17,7 @@ export interface LocalAuthUser {
   name: string;
   email: string;
   role: AuthRole;
+  sessionId?: string;
 }
 
 interface AuthContextValue {
@@ -25,7 +26,7 @@ interface AuthContextValue {
   loading: boolean;
   signin: (args: { email: string; password: string }) => Promise<void>;
   signup: (args: { name: string; email: string; password: string }) => Promise<void>;
-  signout: () => void;
+  signout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -91,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name: authUser.name,
         email: authUser.email,
         role: authUser.role,
+        sessionId: (authUser as any).sessionId,
       };
 
       setUser(sessionUser);
@@ -129,10 +131,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [signin]);
 
-  const signout = useCallback(() => {
+  const signout = useCallback(async () => {
+    const current = user;
+    if (current && current.sessionId) {
+      try {
+        await convexClient.mutation(api.users.removeSession, {
+          userId: current.id,
+          sessionId: current.sessionId,
+        });
+      } catch {
+        // ignore errors during signout
+      }
+    }
     clearStoredSession();
     setUser(null);
-  }, []);
+  }, [user]);
 
   const value = useMemo(
     () => ({

@@ -138,5 +138,11 @@ export default defineSchema({
     .index("by_itemCode", ["itemCode"])
     .index("by_dateCreated", ["dateCreated"]),
 
+  sessions: defineTable({
+    userId: v.id("users"),
+    sessionId: v.string(),
+    createdAt: v.number(),
+  }).index("by_userId", ["userId"]),
+
 });
 

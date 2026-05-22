@@ -11,6 +11,11 @@ type AuthUser = {
   status: "active" | "inactive";
 };
 
+type AuthResponse = AuthUser & { sessionId?: string };
+
+// Session time-to-live in milliseconds (24 hours)
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+
 export const updateCurrentUser = mutation({
   args: {},
   handler: async (ctx) => {
@@ -81,7 +86,7 @@ export const authenticate: ReturnType<typeof mutation> = mutation({
     email: v.string(),
     password: v.string(),
   },
-  handler: async (ctx, args): Promise<AuthUser> => {
+  handler: async (ctx, args): Promise<AuthResponse> => {
     const normalizedEmail = args.email.trim().toLowerCase();
     const existing = await ctx.db
       .query("users")
@@ -111,7 +116,37 @@ export const authenticate: ReturnType<typeof mutation> = mutation({
         throw new Error("User is inactive.");
       }
 
-      return sanitizeUser(existing);
+      // Purge expired sessions for this user
+      const cutoff = Date.now() - SESSION_TTL_MS;
+      const sessions = await ctx.db
+        .query("sessions")
+        .withIndex("by_userId", (q) => q.eq("userId", existing._id))
+        .collect();
+
+      for (const s of sessions) {
+        if (s.createdAt < cutoff) {
+          await ctx.db.delete(s._id);
+        }
+      }
+
+      // Re-check active sessions after purge
+      const activeSessions = (await ctx.db
+        .query("sessions")
+        .withIndex("by_userId", (q) => q.eq("userId", existing._id))
+        .collect()).filter((s) => s.createdAt >= cutoff);
+
+      if (activeSessions.length >= 2) {
+        throw new Error("Maximum concurrent sessions reached (2). Sign out from other devices to continue.");
+      }
+
+      const sessionId = `${String(existing._id)}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+      await ctx.db.insert("sessions", {
+        userId: existing._id,
+        sessionId,
+        createdAt: Date.now(),
+      });
+
+      return { ...sanitizeUser(existing), sessionId };
     }
 
     const anyUser = await ctx.db.query("users").take(1);
@@ -125,12 +160,21 @@ export const authenticate: ReturnType<typeof mutation> = mutation({
         role: "admin",
         status: "active",
       });
+      // Create initial session for the first user
+      const sessionId = `${String(userId)}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
+      await ctx.db.insert("sessions", {
+        userId,
+        sessionId,
+        createdAt: Date.now(),
+      });
+
       return {
         _id: userId,
         name: normalizedEmail,
         email: normalizedEmail,
         role: "admin",
         status: "active",
+        sessionId,
       };
     }
 
@@ -260,6 +304,34 @@ export const removeAll = mutation({
       deletedCount: usersToDelete.length,
       message: `Successfully deleted ${usersToDelete.length} user accounts.`
     };
+  },
+});
+
+export const removeSession = mutation({
+  args: { userId: v.id("users"), sessionId: v.string() },
+  handler: async (ctx, args) => {
+    const sessions = await ctx.db
+      .query("sessions")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    const match = sessions.find((s) => s.sessionId === args.sessionId);
+    if (match) {
+      await ctx.db.delete(match._id);
+    }
+  },
+});
+
+export const removeExpiredSessions = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const cutoff = Date.now() - SESSION_TTL_MS;
+    const all = await ctx.db.query("sessions").collect();
+    for (const s of all) {
+      if (s.createdAt < cutoff) {
+        await ctx.db.delete(s._id);
+      }
+    }
   },
 });
 
